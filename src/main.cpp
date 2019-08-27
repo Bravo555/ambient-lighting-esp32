@@ -20,7 +20,7 @@ void loop() {
                 // set brightness
                 int brightness = Serial.read();
                 if(brightness == -1) break;
-                Serial.printf("setting brightness at: %d\n", brightness);
+                if(Serial.availableForWrite()) Serial.printf("setting brightness at: %d\n", brightness);
                 pixels.setBrightness(brightness);
             }
         }
