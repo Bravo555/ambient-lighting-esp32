@@ -19,9 +19,9 @@ const int INTERVAL = 250;
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 enum {
-    CAPTURING,
-    AMBIENT,
-    OFF,
+    OFF = 0,
+    AMBIENT = 1,
+    CAPTURING = 2,
 } currentMode;
 
 struct {
@@ -31,7 +31,7 @@ struct {
 } ambientState;
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     pixels.begin();
     currentMode = AMBIENT;
     ambientState.lastMillis = millis();
@@ -43,7 +43,12 @@ void setup() {
 // state used by AMBIENT mode
 // lastMillis needs to be set to current time when switching mode to AMBIENT
 
+byte lastColour[3] = {0, 0, 0};
+
 void loop() {
+    unsigned long currTimeMillis = millis();
+    Serial.printf("[%f]\tMODE: %u\n", ((float)currTimeMillis / 1000.0f), currentMode);
+
     // step 1: process messages that may/may not be irrelevant for the current mode
     // overall, we want to support the following messages:
     //      1. enable/disable
@@ -84,20 +89,38 @@ void loop() {
                     if(brightness == -1) break;
                     if(Serial.availableForWrite()) Serial.printf("setting brightness at: %d\n", brightness);
                     pixels.setBrightness(brightness);
+                    pixels.show();
                 }
                     break;
                 case 0x03: { // incoming colour data
-                    byte colours[3] = {0x12, 0x34, 0x56};
+                    byte colours[3] = {0xff, 0x00, 0x00};   // that way we can easily see "missed frames"
                     Serial.readBytes(colours, 3);
+                    Serial.printf("read: %hhu %hhu %hhu\n", colours[0], colours[1], colours[2]);
 
-                    Serial.write(colours[0]);
-                    Serial.write(colours[1]);
-                    Serial.write(colours[2]);
+                    if(colours[0] == lastColour[0] &&
+                        colours[1] == lastColour[1] &&
+                        colours[2] == lastColour[2]) {
+                        break;
+                    }
 
+                    Serial.println("printing new colour");
                     for(int i = 0; i < NUMPIXELS; i++) {
                         pixels.setPixelColor(i, pixels.Color(colours[0], colours[1], colours[2]));
                     }
                     pixels.show();
+                    lastColour[0] = colours[0];
+                    lastColour[1] = colours[1];
+                    lastColour[2] = colours[2];
+                }
+                    break;
+
+                case 0x04: { // enable/disable capture
+                    byte captureEnable = Serial.read();
+                    if(captureEnable == 0xff) {
+                        currentMode = CAPTURING;
+                    } else if(captureEnable == 0x00) {
+                        currentMode = AMBIENT;
+                    }
                 }
                     break;
             }
@@ -110,11 +133,11 @@ void loop() {
                 if(currentMillis > ambientState.lastMillis + INTERVAL) {
                     ambientState.lastMillis = currentMillis;
                     // first nice pattern would be to cycle HSV in a forwards-backwards-forwards... manner
-                    pixels.setPixelColor(ambientState.ledIndex % 60, pixels.ColorHSV(ambientState.hue, 0xff, 0xff));
+                    pixels.setPixelColor(ambientState.ledIndex, pixels.ColorHSV(ambientState.hue, 0xff, 0xff));
                     pixels.show();
 
-                    ambientState.ledIndex += 1;
-                    ambientState.hue = (ambientState.hue + 100) % 0xffff;
+                    ambientState.ledIndex = (ambientState.ledIndex + 1) % NUMPIXELS;
+                    ambientState.hue = (ambientState.hue + 1000) % 0xffff;
                     Serial.printf("%u\n", ambientState.hue);
                 }
             }
@@ -128,4 +151,5 @@ void loop() {
     // pixels.Color() takes RGB values, from 0,0,0 up to 255,255,255
 
     //pixels.show();   // Send the updated pixel colors to the hardware.
+    delay(80);
 }
