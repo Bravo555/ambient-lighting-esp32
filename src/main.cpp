@@ -14,7 +14,7 @@
 
 const int PIN = 2;
 const int NUMPIXELS = 60;
-const int INTERVAL = 250;
+const int INTERVAL = 200;
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -24,10 +24,11 @@ enum {
     CAPTURING = 2,
 } currentMode;
 
+// state used by AMBIENT mode
+// lastMillis needs to be set to current time when switching mode to AMBIENT
 struct {
     unsigned long lastMillis;
-    uint16_t hue;
-    uint16_t ledIndex;
+    uint16_t hueOffset;
 } ambientState;
 
 void setup() {
@@ -35,20 +36,14 @@ void setup() {
     pixels.begin();
     currentMode = AMBIENT;
     ambientState.lastMillis = millis();
-    ambientState.ledIndex = 0;
-    ambientState.hue = 0;
+    ambientState.hueOffset = 0;
     pixels.show();
 }
 
-// state used by AMBIENT mode
-// lastMillis needs to be set to current time when switching mode to AMBIENT
 
 byte lastColour[3] = {0, 0, 0};
 
 void loop() {
-    unsigned long currTimeMillis = millis();
-    Serial.printf("[%f]\tMODE: %u\n", ((float)currTimeMillis / 1000.0f), currentMode);
-
     // step 1: process messages that may/may not be irrelevant for the current mode
     // overall, we want to support the following messages:
     //      1. enable/disable
@@ -133,12 +128,14 @@ void loop() {
                 if(currentMillis > ambientState.lastMillis + INTERVAL) {
                     ambientState.lastMillis = currentMillis;
                     // first nice pattern would be to cycle HSV in a forwards-backwards-forwards... manner
-                    pixels.setPixelColor(ambientState.ledIndex, pixels.ColorHSV(ambientState.hue, 0xff, 0xff));
+                    for(unsigned int i = 0; i < NUMPIXELS; i++) {
+                        uint16_t currentHue = (i * (0xffff / NUMPIXELS) + ambientState.hueOffset) % 0xffff;
+                        pixels.setPixelColor(i, pixels.ColorHSV(currentHue, 0xff, 0xff));
+                    }
                     pixels.show();
 
-                    ambientState.ledIndex = (ambientState.ledIndex + 1) % NUMPIXELS;
-                    ambientState.hue = (ambientState.hue + 1000) % 0xffff;
-                    Serial.printf("%u\n", ambientState.hue);
+                    ambientState.hueOffset = (ambientState.hueOffset + 1000) % 0xffff;
+                    Serial.printf("%u\n", ambientState.hueOffset);
                 }
             }
                 break;
@@ -147,9 +144,5 @@ void loop() {
                 break;
         }
     }
-
-    // pixels.Color() takes RGB values, from 0,0,0 up to 255,255,255
-
-    //pixels.show();   // Send the updated pixel colors to the hardware.
-    delay(80);
+    delay(10);
 }
