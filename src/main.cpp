@@ -134,7 +134,7 @@ void loop() {
                     }
                     pixels.show();
 
-                    ambientState.hueOffset = (ambientState.hueOffset + 1000) % 0xffff;
+                    ambientState.hueOffset = (ambientState.hueOffset + 250) % 0xffff;
                     Serial.printf("%u\n", ambientState.hueOffset);
                 }
             }
