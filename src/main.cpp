@@ -88,24 +88,26 @@ void loop() {
                 }
                     break;
                 case 0x03: { // incoming colour data
-                    byte colours[3] = {0xff, 0x00, 0x00};   // that way we can easily see "missed frames"
-                    Serial.readBytes(colours, 3);
-                    Serial.printf("read: %hhu %hhu %hhu\n", colours[0], colours[1], colours[2]);
+                    if(currentMode == CAPTURING) {
+                        byte colours[3] = {0xff, 0x00, 0x00};   // that way we can easily see "missed frames"
+                        Serial.readBytes(colours, 3);
+                        Serial.printf("read: %hhu %hhu %hhu\n", colours[0], colours[1], colours[2]);
 
-                    if(colours[0] == lastColour[0] &&
-                        colours[1] == lastColour[1] &&
-                        colours[2] == lastColour[2]) {
-                        break;
-                    }
+                        if(colours[0] == lastColour[0] &&
+                            colours[1] == lastColour[1] &&
+                            colours[2] == lastColour[2]) {
+                            break;
+                        }
 
-                    Serial.println("printing new colour");
-                    for(int i = 0; i < NUMPIXELS; i++) {
-                        pixels.setPixelColor(i, pixels.Color(colours[0], colours[1], colours[2]));
+                        Serial.println("printing new colour");
+                        for(int i = 0; i < NUMPIXELS; i++) {
+                            pixels.setPixelColor(i, pixels.Color(colours[0], colours[1], colours[2]));
+                        }
+                        pixels.show();
+                        lastColour[0] = colours[0];
+                        lastColour[1] = colours[1];
+                        lastColour[2] = colours[2];
                     }
-                    pixels.show();
-                    lastColour[0] = colours[0];
-                    lastColour[1] = colours[1];
-                    lastColour[2] = colours[2];
                 }
                     break;
 
