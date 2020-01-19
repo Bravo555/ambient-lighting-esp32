@@ -22,6 +22,7 @@ enum {
     OFF = 0,
     AMBIENT = 1,
     CAPTURING = 2,
+    SOLID = 3,
 } currentMode;
 
 // state used by AMBIENT mode
@@ -30,6 +31,16 @@ struct {
     unsigned long lastMillis;
     uint16_t hueOffset;
 } ambientState;
+
+struct Color {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+
+struct {
+    Color color;
+} solidState;
 
 void setup() {
     Serial.begin(115200);
@@ -64,6 +75,7 @@ void loop() {
             }
         }
     }
+
     else {
         while(Serial.available()) {
             byte command = Serial.read();
@@ -111,15 +123,35 @@ void loop() {
                 }
                     break;
 
-                case 0x04: { // enable/disable capture
-                    byte captureEnable = Serial.read();
-                    if(captureEnable == 0xff) {
-                        currentMode = CAPTURING;
-                    } else if(captureEnable == 0x00) {
+                case 0x04: { // change mode
+                    Serial.println("changing mode");
+                    byte newMode = Serial.read();
+                    switch(newMode) {
+                    case 0x01: {
                         currentMode = AMBIENT;
                     }
+                        break;
+                    case 0x02: {
+                        currentMode = CAPTURING;
+                    }
+                        break;
+                    case 0x03: {
+                        currentMode = SOLID;
+                        uint8_t rgb[3];
+                        Serial.readBytes(rgb, 3);
+                        Color color = {
+                            .r = rgb[0],
+                            .g = rgb[1],
+                            .b = rgb[2],
+                        };
+                        solidState.color = color;
+                    }
+                        break;
+                    default: // Invalid mode? Turn it off
+                        currentMode = OFF;
+                        break;
+                    }
                 }
-                    break;
             }
         }
 
@@ -144,6 +176,12 @@ void loop() {
             case CAPTURING:
                 // here we'd ordinarily process the screen payload, but we did it in message processing stage
                 break;
+            case SOLID:
+                Color c = solidState.color;
+                for(int i = 0; i < NUMPIXELS; i++) {
+                    pixels.setPixelColor(i, c.r, c.g, c.b);
+                }
+                pixels.show();
         }
     }
     delay(10);
