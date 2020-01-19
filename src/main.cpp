@@ -95,7 +95,7 @@ void loop() {
                     int brightness = Serial.read();
                     if(brightness == -1) break;
                     if(Serial.availableForWrite()) Serial.printf("setting brightness at: %d\n", brightness);
-                    pixels.setBrightness(brightness);
+                    pixels.setBrightness(pixels.gamma8(brightness));
                     pixels.show();
                 }
                     break;
