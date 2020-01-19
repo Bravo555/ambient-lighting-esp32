@@ -179,7 +179,7 @@ void loop() {
             case SOLID:
                 Color c = solidState.color;
                 for(int i = 0; i < NUMPIXELS; i++) {
-                    pixels.setPixelColor(i, c.r, c.g, c.b);
+                    pixels.setPixelColor(i, pixels.gamma32(pixels.Color(c.r, c.g, c.b)));
                 }
                 pixels.show();
         }
